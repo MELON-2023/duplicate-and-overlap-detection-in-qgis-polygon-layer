@@ -1,0 +1,12 @@
+from qgis.core import QgsProject
+
+layer_name = "YourLayerName"  # Replace with your layer's name
+layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+
+total_vertices = 0
+
+for feature in layer.getFeatures():
+    geom = feature.geometry()
+    total_vertices += len(list(geom.vertices()))
+
+print(f"Total Number of Vertices in the Layer: {total_vertices}")
