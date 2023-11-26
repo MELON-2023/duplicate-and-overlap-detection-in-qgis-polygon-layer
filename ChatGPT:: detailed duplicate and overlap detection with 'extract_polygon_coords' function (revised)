@@ -1,0 +1,63 @@
+import numpy as np
+from qgis.core import QgsProject, QgsSpatialIndex, QgsWkbTypes, QgsGeometry
+
+layer_name = "YourLayerName"  # Replace with the name of your layer
+layer = QgsProject.instance().mapLayersByName(layer_name)[0]  # Get the layer by name
+
+# ... [rest of your setup code]
+
+def extract_polygon_coords(geometry):
+    coords = []
+    if not geometry or geometry.isEmpty():
+        return np.array(coords)
+
+    if geometry.isMultipart():
+        multi_polygon = geometry.asMultiPolygon()
+        for polygon in multi_polygon:
+            if polygon:
+                outer_ring = polygon[0]  # Only outer ring
+                coords.extend([[point.x(), point.y()] for point in outer_ring])
+    else:
+        single_polygon = geometry.asPolygon()
+        if single_polygon:
+            outer_ring = single_polygon[0]  # Only outer ring
+            coords.extend([[point.x(), point.y()] for point in outer_ring])
+    return np.array(coords)
+
+def check_overlap_types(geom1, geom2):
+    if geom1.equals(geom2):
+        return "Complete Overlap"
+    elif geom1.overlaps(geom2):
+        return "Partial Overlap"
+    elif geom1.touches(geom2):
+        intersection = geom1.intersection(geom2)
+        if intersection.isGeosValid() and intersection.type() == QgsWkbTypes.PointGeometry:
+            return "Corner Overlap"
+        else:
+            return "Edge Overlap"
+    else:
+        return None
+
+for i, feature in enumerate(layer.getFeatures()):
+    central_as_id = central_as_values[i]
+    intersecting_feature_ids = spatial_index.intersects(feature.geometry().boundingBox())
+
+    if feature.geometry().type() == QgsWkbTypes.PolygonGeometry:
+        feature_coords_array = extract_polygon_coords(feature.geometry())
+
+    for other_feature_id in intersecting_feature_ids:
+        if ids[other_feature_id] != ids[i]:
+            other_feature = layer.getFeature(ids[other_feature_id])
+            other_central_as_id = central_as_values[other_feature_id]
+
+            if other_feature.geometry().type() == QgsWkbTypes.PolygonGeometry:
+                other_feature_coords_array = extract_polygon_coords(other_feature.geometry())
+
+            overlap_type = check_overlap_types(feature.geometry(), other_feature.geometry())
+            if overlap_type:
+                print(f"{overlap_type} detected: Features with IDs {ids[i]} and {ids[other_feature_id]}")
+                if overlap_type == "Complete Overlap":
+                    if np.array_equal(feature_coords_array, other_feature_coords_array):
+                        print(f"Exact duplicate: Features {ids[i]} and {ids[other_feature_id]} have identical geometries and 'Central As' values.")
+                    else:
+                        print(f"Duplicate shape but different attributes: Features {ids[i]} and {ids[other_feature_id]} have identical geometries but different 'Central As' values.")
