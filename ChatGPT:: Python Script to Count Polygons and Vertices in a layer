@@ -1,0 +1,17 @@
+from qgis.core import QgsProject
+
+# Replace with your layer's name
+layer_name = "YourLayerName"
+layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+
+num_polygons = 0
+total_vertices = 0
+
+for feature in layer.getFeatures():
+    num_polygons += 1
+    geom = feature.geometry()
+    # Count vertices in the current feature
+    total_vertices += len(list(geom.vertices()))
+
+print(f"Number of Polygons: {num_polygons}")
+print(f"Total Number of Vertices: {total_vertices}")
