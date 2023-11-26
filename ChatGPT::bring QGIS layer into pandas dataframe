@@ -1,0 +1,43 @@
+import pandas as pd
+from qgis.core import QgsProject
+
+# Function to convert QGIS layer to Pandas DataFrame
+def layer_to_dataframe(layer):
+    # Create an empty list to store data
+    data = []
+
+    # Iterate over each feature in the layer
+    for feature in layer.getFeatures():
+        # Get feature geometry
+        geom = feature.geometry()
+
+        # Extract specific attribute information
+        # Replace 'name', 'length', 'type' with your actual attribute names
+        name = feature['name'] if 'name' in feature else None
+        length = feature['length'] if 'length' in feature else None
+        type = feature['type'] if 'type' in feature else None
+
+        # Create a dictionary for the row
+        row = {
+            'id': feature.id(),
+            'geometry': geom.asWkt(),
+            'name': name,
+            'length': length,
+            'type': type
+        }
+
+        # Append the row to the data list
+        data.append(row)
+
+    # Convert the list of data to a Pandas DataFrame
+    return pd.DataFrame(data)
+
+# Replace 'your_layer_name' with the name of your MultiPolygon layer
+layer_name = 'your_layer_name'
+layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+
+# Convert the layer to a DataFrame
+df = layer_to_dataframe(layer)
+
+# Display the first few rows of the DataFrame
+print(df.head())
