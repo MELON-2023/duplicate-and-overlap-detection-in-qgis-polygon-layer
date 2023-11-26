@@ -1,0 +1,19 @@
+from qgis.core import QgsProject, QgsFeature, QgsGeometry
+
+layer_name = "YourLayerName"  # Replace with your layer's name
+layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+
+tolerance = 0.0001  # Set the tolerance level for vertex removal
+
+layer.startEditing()  # Start an editing session
+
+for feature in layer.getFeatures():
+    geometry = feature.geometry()
+    
+    # Simplify the geometry to remove closely spaced vertices
+    simplified_geometry = geometry.simplify(tolerance)
+    
+    # Update the feature with the simplified geometry
+    layer.changeGeometry(feature.id(), simplified_geometry)
+
+layer.commitChanges()  # Save changes
