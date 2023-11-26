@@ -1,0 +1,15 @@
+from qgis.core import QgsProject, QgsWkbTypes
+
+layer_name = "YourLayerName"  # Replace with your layer's name
+layer = QgsProject.instance().mapLayersByName(layer_name)[0]
+
+unique_feature_types = set()
+
+for feature in layer.getFeatures():
+    geom = feature.geometry()
+    geom_type = QgsWkbTypes.displayString(geom.wkbType())
+    unique_feature_types.add(geom_type)
+
+print("Unique feature types in the layer:")
+for feature_type in unique_feature_types:
+    print(feature_type)
