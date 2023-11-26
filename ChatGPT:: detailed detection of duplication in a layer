@@ -1,0 +1,16 @@
+for i, feature in enumerate(layer.getFeatures()):
+    feature_coords_array = extract_polygon_coords(feature.geometry())
+
+    for other_feature_id in intersecting_feature_ids:
+        if ids[other_feature_id] != ids[i]:
+            other_feature = layer.getFeature(ids[other_feature_id])
+            other_feature_coords_array = extract_polygon_coords(other_feature.geometry())
+
+            # Check for complete geometry overlap
+            if feature.geometry().equals(other_feature.geometry()):
+                # Additional check for identical attributes
+                if all(feature[attr] == other_feature[attr] for attr in feature.fields().names()):
+                    print(f"Exact duplicate detected: Features with IDs {ids[i]} and {ids[other_feature_id]}")
+                else:
+                    print(f"Complete overlap with different attributes detected: Features with IDs {ids[i]} and {ids[other_feature_id]}")
+            # Other overlap checks...
