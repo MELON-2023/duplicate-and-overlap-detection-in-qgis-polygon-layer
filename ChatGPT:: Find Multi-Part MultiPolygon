@@ -20,3 +20,9 @@ df['is_true_multi_part'] = df['geometry'].apply(is_true_multi_part)
 
 # Display the DataFrame to verify the new column
 print(df.head())
+
+# Filter the DataFrame to include only multi-part polygons
+multi_part_polygons = df[df['is_true_multi_part']]
+
+# Display the filtered DataFrame
+print(multi_part_polygons.head())
