@@ -1,0 +1,20 @@
+import pandas as pd
+
+# Sample DataFrame
+# df = pd.DataFrame({'geometry': ['MULTIPOLYGON (((...)))', 'POLYGON ((...))', ...]})
+
+# Function to classify geometry as 'MultiPolygon' or 'Polygon'
+def classify_geometry(geom_wkt):
+    if isinstance(geom_wkt, str):
+        if geom_wkt.startswith('MULTIPOLYGON'):
+            return 'MultiPolygon'
+        elif geom_wkt.startswith('POLYGON'):
+            return 'Polygon'
+    return 'Other'  # Handles non-string types and unrecognized strings
+
+# Apply the function to create a new column
+df['geom_type'] = df['geometry'].apply(classify_geometry)
+
+# Count the number of MultiPolygons and Polygons
+geom_counts = df['geom_type'].value_counts()
+print(geom_counts)
