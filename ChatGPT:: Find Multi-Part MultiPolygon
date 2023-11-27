@@ -1,0 +1,22 @@
+from shapely.wkt import loads
+
+# Function to check if a WKT geometry is a multi-part polygon
+def is_true_multi_part(wkt):
+    # Check if the entry is a string
+    if isinstance(wkt, str):
+        try:
+            geometry = loads(wkt)
+            # Check if the geometry is of type MultiPolygon and has more than one part
+            return geometry.geom_type == 'MultiPolygon' and len(list(geometry.geoms)) > 1
+        except:
+            # Handle any other errors (like malformed WKT)
+            return False
+    else:
+        # If the entry is not a string (e.g., NaN), it's not a valid WKT geometry
+        return False
+
+# Apply the function to create a new column indicating true multi-part status
+df['is_true_multi_part'] = df['geometry'].apply(is_true_multi_part)
+
+# Display the DataFrame to verify the new column
+print(df.head())
