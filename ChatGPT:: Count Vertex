@@ -1,0 +1,15 @@
+import re
+
+# Function to count vertices in a WKT Polygon
+def count_vertices(wkt):
+    if isinstance(wkt, str):
+        coords = re.sub(r'Polygon|\(|\)|MultiPolygon', '', wkt)
+        points = coords.split(',')
+        return len(points)
+    return 0  # Default value for non-strings
+
+# Apply the function
+df['vertex_count'] = df['geometry'].apply(count_vertices)
+
+# Display the first few rows to check
+print(df.head())
