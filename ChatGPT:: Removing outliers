@@ -1,0 +1,13 @@
+# Calculate Q1 and Q3
+Q1 = df['vertex_count'].quantile(0.25)
+Q3 = df['vertex_count'].quantile(0.75)
+
+# Calculate the IQR
+IQR = Q3 - Q1
+
+# Define bounds for outliers
+lower_bound = Q1 - 1.5 * IQR
+upper_bound = Q3 + 1.5 * IQR
+
+# 2.Filter out outliers
+df_filtered = df[(df['vertex_count'] >= lower_bound) & (df['vertex_count'] <= upper_bound)]
