@@ -1,0 +1,37 @@
+import pandas as pd
+from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry, QgsField
+from PyQt5.QtCore import QVariant
+import os
+
+# Path to your CSV file
+csv_file = 'path_to_your_file/multi_part_multipolygons.csv'
+
+# Read the CSV file using Pandas
+df = pd.read_csv(csv_file)
+
+# Create an empty memory layer for MultiPolygons
+vl = QgsVectorLayer("MultiPolygon?crs=epsg:4326", "MultiPart_MultiPolygons", "memory")
+provider = vl.dataProvider()
+
+# Add fields from the CSV to the layer
+for col in df.columns:
+    if col != 'geometry':  # Exclude the geometry column
+        provider.addAttributes([QgsField(col, QVariant.String)])
+vl.updateFields()
+
+# Iterate over the DataFrame and add features to the layer
+for idx, row in df.iterrows():
+    # Create a new feature
+    feat = QgsFeature()
+    
+    # Set feature geometry from WKT
+    feat.setGeometry(QgsGeometry.fromWkt(row['geometry']))
+
+    # Set attributes (other than geometry)
+    feat.setAttributes([row[col] for col in df.columns if col != 'geometry'])
+    
+    # Add feature to the layer
+    provider.addFeature(feat)
+
+# Add the layer to the QGIS interface
+QgsProject.instance().addMapLayer(vl)
