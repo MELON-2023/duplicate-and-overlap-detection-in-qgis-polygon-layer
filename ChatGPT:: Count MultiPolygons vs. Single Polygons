@@ -1,14 +1,14 @@
 import pandas as pd
 
 # Sample DataFrame
-# df = pd.DataFrame({'geometry': ['MULTIPOLYGON (((...)))', 'POLYGON ((...))', ...]})
+# df = pd.DataFrame({'geometry': ['MultiPolygon (((...)))', 'Polygon ((...))', ...]})
 
 # Function to classify geometry as 'MultiPolygon' or 'Polygon'
 def classify_geometry(geom_wkt):
     if isinstance(geom_wkt, str):
-        if geom_wkt.startswith('MULTIPOLYGON'):
+        if geom_wkt.startswith('MultiPolygon'):
             return 'MultiPolygon'
-        elif geom_wkt.startswith('POLYGON'):
+        elif geom_wkt.startswith('Polygon'):
             return 'Polygon'
     return 'Other'  # Handles non-string types and unrecognized strings
 
