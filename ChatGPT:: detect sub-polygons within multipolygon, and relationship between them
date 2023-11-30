@@ -1,0 +1,48 @@
+from shapely.wkt import loads
+from shapely.geometry import Polygon, MultiPolygon
+
+# Function to check for interactions in a multipolygon
+def check_interactions(multi_polygon):
+    if not isinstance(multi_polygon, MultiPolygon):
+        print("Debug: The geometry is not a MultiPolygon.")
+        raise ValueError("Input must be a MultiPolygon")
+
+    print(f"Debug: Number of polygons in the MultiPolygon: {len(multi_polygon.geoms)}")
+
+    for i in range(len(multi_polygon.geoms)):
+        for j in range(i+1, len(multi_polygon.geoms)):
+            polygon1 = multi_polygon.geoms[i]
+            polygon2 = multi_polygon.geoms[j]
+
+            print(f"Debug: Checking interaction between Polygon {i} and Polygon {j}")
+
+            # check for enclosement
+            if polygon1.contains(polygon2):
+                print(f"Polygon {i} completely contains Polygon {j}.")
+            elif polygon2.contains(polygon1):
+                print(f"Polygon {j} completely contains Polygon {i}.")
+            # check for overlap
+            elif polygon1.overlaps(polygon2):
+                print(f"Polygon {i} and Polygon {j} overlap.")
+            # check for touch interactions
+            elif polygon1.touches(polygon2):
+                # if they touch, check how they touch
+                if polygon1.intersection(polygon2).geom_type == 'LineString':
+                    print(f"Polygon {i} and Polygon {j} share an edge.")
+                elif polygon1.intersection(polygon2).geom_type == 'Point':
+                    print(f"Polygon {i} and Polygon {j} touch at a corner.")
+            else:
+                print(f"Polygon {i} and Polygon {j} do not interact.")
+
+# Corrected WKT string for the MultiPolygon
+corrected_wkt = "MULTIPOLYGON(((752801.9 5834796.6, 752782.0 5834794.8, 752768.6 5834793.6, 752764.8 5834814.6, 752768.2 5834811.5, 752783.4 5834812.8, 752801.5 5834814.4, 752819.9 5834816.1, 752838.1 5834817.7, 752859.7 5834819.6, 752868.7 5834802.3, 753831.2 5834799.2, 752831.2 5834799.2, 752830.7 5834799.2, 752801.9 5834796.6)), ((752954.0 5834807.3, 752958.8 5834810.2, 752955.1 5834808.7, 752954.5 5834808.0, 752954.0 5834807.3)), ((752919.3 5834807.0, 752924.8 5834802.6, 752924.6 5834803.5, 752924.2 5834804.3, 752923.7 5834805.1, 752923.1 5834805.7, 752920.6 5834806.9, 752919.7 5834807.0, 752919.3 5834807.0)), ((752865.0 5834798.9, 752868.7 5834802.3, 752867.8 5834801.9, 752865.7 5834800.2, 752865.2 5834799.5, 752865.0 5834798.9)), ((752830.7 5834799.2, 752836.6 5834795.1, 752836.3 5834795.9, 752835.9 5834796.8, 752835.3 5834797.5, 752834.6 5834798.1, 752832.1 5834799.2, 752831.2 5834799.2, 752830.7 5834799.2)))"
+
+# Load the corrected WKT as a MultiPolygon and check interactions
+try:
+    corrected_geometry = loads(corrected_wkt)
+    if isinstance(corrected_geometry, MultiPolygon):
+        check_interactions(corrected_geometry)
+    else:
+        print("The geometry is not a MultiPolygon, interactions check skipped.")
+except Exception as e:
+    print("Error loading WKT:", e)
