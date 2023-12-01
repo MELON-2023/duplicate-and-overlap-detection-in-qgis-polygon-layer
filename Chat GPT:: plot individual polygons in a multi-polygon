@@ -1,0 +1,32 @@
+import matplotlib.pyplot as plt
+from shapely.wkt import loads
+from shapely.geometry import Polygon, MultiPolygon
+
+def plot_individual_polygon(poly, index):
+    fig, ax = plt.subplots()
+    x, y = poly.exterior.xy
+    ax.fill(x, y, alpha=0.5, fc='blue', ec='black')  # Fill color for exterior is blue
+    for interior in poly.interiors:
+        ix, iy = interior.xy
+        ax.fill(ix, iy, alpha=0.5, fc='white', ec='black')  # Fill color for interior is white
+
+    ax.set_title(f"Polygon {index}")
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.show()
+
+# Sample usage
+wkt_geometry = 'your_wkt_string_here'  # Replace with your actual WKT string
+try:
+    geometry = loads(wkt_geometry)
+    if isinstance(geometry, Polygon):
+        plot_individual_polygon(geometry, 0)
+        print("Polygon is valid:", geometry.is_valid)
+    elif isinstance(geometry, MultiPolygon):
+        for i, poly in enumerate(geometry.geoms):
+            plot_individual_polygon(poly, i)
+            print(f"Polygon {i} is valid:", poly.is_valid)
+    else:
+        print("The geometry is not a Polygon or MultiPolygon.")
+except Exception as e:
+    print("Error loading WKT:", e)
