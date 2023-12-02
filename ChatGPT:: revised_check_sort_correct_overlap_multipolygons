@@ -1,0 +1,71 @@
+from shapely.geometry import MultiPolygon, Polygon
+from shapely.ops import unary_union
+from shapely.wkt import loads
+import matplotlib.pyplot as plt
+import pandas as pd
+import math
+
+# Define functions
+def plot_polygons(multi_polygon, title="Polygons"):
+    """Plot all polygons in a MultiPolygon."""
+    plt.figure()
+    for poly in multi_polygon.geoms:
+        x, y = poly.exterior.xy
+        plt.plot(x, y, marker='o')
+        plt.fill(x, y, alpha=0.3)
+    plt.title(title)
+    plt.xlabel("X Coordinate")
+    plt.ylabel("Y Coordinate")
+    plt.show()
+    
+# this is optional, can function without the identify_main_polygon() function
+def identify_main_polygon(multi_polygon):
+    """Identify the main polygon based on the largest area."""
+    largest_area = 0
+    main_polygon = None
+    for poly in multi_polygon.geoms:
+        if poly.area > largest_area:
+            largest_area = poly.area
+            main_polygon = poly
+    return main_polygon
+
+def correct_complex_polygon_with_bounding_box(multi_polygon):
+    """Correct complex polygon by creating and subtracting a bounding box around sub-polygons."""
+    main_polygon = identify_main_polygon(multi_polygon)
+    
+    # Calculate bounding box for sub-polygons
+    min_x, min_y, max_x, max_y = float('inf'), float('inf'), float('-inf'), float('-inf')
+    for poly in multi_polygon.geoms:
+        if poly != main_polygon:
+            bounds = poly.bounds
+            min_x, min_y, max_x, max_y = min(min_x, bounds[0]), min(min_y, bounds[1]), max(max_x, bounds[2]), max(max_y, bounds[3])
+
+    # create the bounding box polygon
+    bounding_box = Polygon([(min_x, min_y), (min_x, max_y), (max_x, max_y), (max_x, min_y)])
+    # seperate the bounding box from the main polygon
+    new_main_polygon = main_polygon.difference(bounding_box)
+    # combine the new main polygon with the original sub_polygons
+    sub_polygons = [poly for poly in multi_polygon.geoms if poly != main_polygon]
+    # convert back to a multipolygon
+    return MultiPolygon([new_main_polygon] + sub_polygons)
+
+# Example usage with the provided MultiPolygon WKT
+wkt = """
+MULTIPOLYGON (
+    ((752801.9 5834796.6, 752782 5834794.8, 752768.6 5834793.6, 752764.8 5834814.6, 752768.2 5834811.5, 753013 5834833.1, 753016.2 5834836.5, 753013.1 5834805.7, 753008.3 5834814.1, 753006.2 5834814.3, 752973.1 5834811.5, 752958.8 5834810.2, 752919.3 5834807, 752889.4 5834804.2, 752879.6 5834802.4, 752869.6 5834802.4, 752868.7 5834802.3, 752831.2 5834799.2, 752831.2 5834799.2, 752830.7 5834799.2, 752801.9 5834796.6)),
+    ((752954 5834807.3, 752958.8 5834810.2, 752957.9 5834810.1, 752957 5834809.8, 752956.2 5834809.4, 752955.8 5834809.2, 752955.1 5834808.7, 752954.5 5834808, 752954 5834807.3)),
+    ((752919.3 5834807, 752924.8 5834802.6, 752924.6 5834803.5, 752924.2 5834804.3, 752923.7 5834805.1, 752923.1 5834805.7, 752922.3 5834806.3, 752921.5 5834806.7, 752920.6 5834806.9, 752919.7 5834807, 752919.3 5834807)),
+    ((752865 5834798.9, 752868.7 5834802.3, 752867.8 5834801.9, 752867 5834801.5, 752866.3 5834800.9, 752865.7 5834800.2, 752865.2 5834799.5, 752865 5834798.9)),
+    ((752830.7 5834799.2, 752836.6 5834795.1, 752836.3 5834795.9, 752835.9 5834796.8, 752835.3 5834797.5, 752834.6 5834798.1, 752833.8 5834798.6, 752833 5834799, 752832.1 5834799.2, 752831.2 5834799.2, 752830.2 5834799.2, 752830.7 5834799.2))
+)
+"""
+# or with .csv file instead of above coordinates
+# df = pd. read_csv('one_polygon.csv')
+# wkt = df.loc[0, 'geometry']
+
+multi_polygon = loads(wkt)
+
+processed_multi_polygon = correct_complex_polygon_with_bounding_box(multi_polygon)
+
+plot_polygons(multi_polygon, "Original MultiPolygon")
+plot_polygons(processed_multi_polygon, "Processed MultiPolygon with Bounding Box Method")
