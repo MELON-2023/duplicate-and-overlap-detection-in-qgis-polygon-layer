@@ -1,0 +1,165 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from shapely.geometry import Polygon, MultiPolygon
+from shapely.wkt import loads
+from sklearn.decomposition import PCA
+
+# Function to identify the main polygon (largest area)
+def identify_main_polygon(multi_polygon):
+    largest_area = 0
+    main_polygon = None
+    for poly in multi_polygon.geoms:
+        if poly.area > largest_area:
+            largest_area = poly.area
+            main_polygon = poly
+    return main_polygon
+
+# Function to create a non-intersecting bounding box
+def create_aligned_bounding_box_v2(sub_polygons, eigenvectors, centroid):
+    min_projections = [np.inf, np.inf]
+    max_projections = [-np.inf, -np.inf]
+    for poly in sub_polygons:
+        for point in poly.exterior.coords:
+            point_rel = np.array(point) - centroid
+            for i, axis in enumerate(eigenvectors):
+                projection = np.dot(point_rel, axis)
+                min_projections[i] = min(min_projections[i], projection)
+                max_projections[i] = max(max_projections[i], projection)
+    corners = [
+        centroid + min_projections[0] * eigenvectors[0] + min_projections[1] * eigenvectors[1],
+        centroid + max_projections[0] * eigenvectors[0] + min_projections[1] * eigenvectors[1],
+        centroid + max_projections[0] * eigenvectors[0] + max_projections[1] * eigenvectors[1],
+        centroid + min_projections[0] * eigenvectors[0] + max_projections[1] * eigenvectors[1]
+    ]
+    return Polygon(corners)
+
+# Function to shift a polygon by a given vector
+def shift_polygon(polygon, shift_vector):
+    return Polygon([np.array(point) + shift_vector for point in polygon.exterior.coords])
+
+# Function to calculate the minimum shift distance along a given axis
+def calculate_minimum_shift_distance(main_polygon, sub_polygons, axis):
+    min_distance = np.inf
+    for sub_poly in sub_polygons:
+        for point in sub_poly.exterior.coords:
+            projection_point = np.dot(np.array(point) - main_polygon.centroid, axis)
+            projection_main_polygon = [np.dot(np.array(p) - main_polygon.centroid, axis) for p in main_polygon.exterior.coords]
+            distance = min([abs(projection_point - proj) for proj in projection_main_polygon])
+            if distance < min_distance:
+                min_distance = distance
+    return min_distance
+
+# Load the MULTIPOLYGON data
+multipolygon_wkt = """
+MULTIPOLYGON (((752801.9 5834796.6, 752782 5834794.8, 752768.6 5834793.6, 752764.8 5834814.6, 752768.2 5834811.5, 753013 5834833.1, 753016.2 5834836.5, 753013.1 5834805.7, 753008.3 5834814.1, 753006.2 5834814.3, 752973.1 5834811.5, 752958.8 5834810.2, 752919.3 5834807, 752889.4 5834804.2, 752879.6 5834802.4, 752869.6 5834802.4, 752868.7 5834802.3, 752831.2 5834799.2, 752831.2 5834799.2, 752830.7 5834799.2, 752801.9 5834796.6)),
+    ((752954 5834807.3, 752958.8 5834810.2, 752957.9 5834810.1, 752957 5834809.8, 752956.2 5834809.4, 752955.8 5834809.2, 752955.1 5834808.7, 752954.5 5834808, 752954 5834807.3)),
+    ((752919.3 5834807, 752924.8 5834802.6, 752924.6 5834803.5, 752924.2 5834804.3, 752923.7 5834805.1, 752923.1 5834805.7, 752922.3 5834806.3, 752921.5 5834806.7, 752920.6 5834806.9, 752919.7 5834807, 752919.3 5834807)),
+    ((752865 5834798.9, 752868.7 5834802.3, 752867.8 5834801.9, 752867 5834801.5, 752866.3 5834800.9, 752865.7 5834800.2, 752865.2 5834799.5, 752865 5834798.9)),
+    ((752830.7 5834799.2, 752836.6 5834795.1, 752836.3 5834795.9, 752835.9 5834796.8, 752835.3 5834797.5, 752834.6 5834798.1, 752833.8 5834798.6, 752833 5834799, 752832.1 5834799.2, 752831.2 5834799.2, 752830.2 5834799.2, 752830.7 5834799.2)))"""
+multi_polygon = loads(multipolygon_wkt)
+
+# Identify the main polygon and sub-polygons
+main_polygon = identify_main_polygon(multi_polygon)
+sub_polygons = [poly for poly in multi_polygon.geoms if poly != main_polygon]
+
+# Perform PCA on the main polygon
+coords = np.array(main_polygon.exterior.coords[:-1])
+pca = PCA(n_components=2)
+pca.fit(coords)
+
+# Principal axes from PCA
+first_principal_axis = pca.components_[0]
+second_principal_axis = pca.components_[1]
+
+# Calculate the centroid of the sub-polygons
+sub_polygons_centroid = np.mean(np.vstack([np.array(poly.exterior.coords[:-1]) for poly in sub_polygons]), axis=0)
+
+# Create an aligned bounding box
+aligned_bounding_box = create_aligned_bounding_box_v2(sub_polygons, [first_principal_axis, second_principal_axis], sub_polygons_centroid)
+
+# Calculate the minimum shift distance and define the shift vector
+shift_distance = calculate_minimum_shift_distance(main_polygon, sub_polygons, second_principal_axis)
+shift_vector = -shift_distance * second_principal_axis
+
+# Apply the shift to the bounding box and sub-polygons
+shifted_bounding_box = shift_polygon(aligned_bounding_box, shift_vector)
+shifted_sub_polygons = [shift_polygon(poly, shift_vector) for poly in sub_polygons]
+
+# Calculate plot limits based on the extents of the main polygon and the shifted bounding box
+main_min_x, main_min_y, main_max_x, main_max_y = main_polygon.bounds
+bbox_min_x, bbox_min_y, bbox_max_x, bbox_max_y = shifted_bounding_box.bounds
+
+plot_min_x = min(main_min_x, bbox_min_x) - 100
+plot_max_x = max(main_max_x, bbox_max_x) + 100
+plot_min_y = min(main_min_y, bbox_min_y) - 100
+plot_max_y = max(main_max_y, bbox_max_y) + 100
+
+# Plotting
+plt.figure(figsize=(12, 12))
+x_main, y_main = main_polygon.exterior.xy
+plt.plot(x_main, y_main, label="Main Polygon", color='blue')
+for poly in shifted_sub_polygons:
+    x, y = poly.exterior.xy
+    plt.plot(x, y, color='orange')
+x_box, y_box = shifted_bounding_box.exterior.xy
+plt.plot(x_box, y_box, label="Shifted Bounding Box", color='purple', linewidth=2)
+plt.xlim(plot_min_x, plot_max_x)
+plt.ylim(plot_min_y, plot_max_y)
+plt.title("Shifted Sub-Polygons and Bounding Box Relative to Main Polygon")
+plt.xlabel("X Coordinate")
+plt.ylabel("Y Coordinate")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+#___________________________________________________________________________________________________________________________________________
+# save vertex by vertex in .csv
+import pandas as pd
+
+# Function to convert a polygon to a DataFrame
+def polygon_to_df(polygon, polygon_type):
+    # Extract x and y coordinates
+    x, y = polygon.exterior.xy
+    data = {'x': x, 'y': y, 'type': polygon_type}
+    return pd.DataFrame(data)
+
+# Convert the main polygon, shifted bounding box, and shifted sub-polygons to DataFrames
+df_main_polygon = polygon_to_df(main_polygon, 'main_polygon')
+df_shifted_bbox = polygon_to_df(shifted_bounding_box, 'shifted_bounding_box')
+
+# Combine sub-polygons into a single DataFrame
+df_shifted_sub_polygons = pd.concat([polygon_to_df(poly, f'sub_polygon_{i}') for i, poly in enumerate(shifted_sub_polygons)], ignore_index=True)
+
+# Combine all DataFrames
+df_all_polygons = pd.concat([df_main_polygon, df_shifted_bbox, df_shifted_sub_polygons], ignore_index=True)
+
+# Save to CSV
+df_all_polygons.to_csv('new_polygons.csv', index=False)
+
+# Provide the path to the saved CSV file
+csv_file_path = 'new_polygons.csv'
+csv_file_path
+
+#____________________________________________________________________________________________________________________________________________________________
+# save in wkt in csv
+# Function to convert polygons to WKT format and save in DataFrame
+def polygons_to_wkt_df(main_polygon, shifted_bbox, shifted_sub_polygons):
+    data = []
+    data.append({'type': 'main_polygon', 'wkt': main_polygon.wkt})
+    data.append({'type': 'shifted_bounding_box', 'wkt': shifted_bbox.wkt})
+
+    for i, poly in enumerate(shifted_sub_polygons):
+        data.append({'type': f'sub_polygon_{i}', 'wkt': poly.wkt})
+    
+    return pd.DataFrame(data)
+
+# Convert polygons to WKT format and create DataFrame
+df_wkt_polygons = polygons_to_wkt_df(main_polygon, shifted_bounding_box, shifted_sub_polygons)
+
+# Save DataFrame as CSV
+df_wkt_polygons.to_csv('wkt_polygons.csv', index=False)
+
+# Provide the path to the saved CSV file
+csv_wkt_file_path = 'wkt_polygons.csv'
+csv_wkt_file_path
+
