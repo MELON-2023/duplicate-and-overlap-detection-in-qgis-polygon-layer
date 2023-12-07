@@ -1,0 +1,32 @@
+from qgis.core import QgsPointXY, QgsProject, QgsGeometry, QgsFeature, QgsField, QgsVectorLayer
+from qgis.PyQt.QtCore import QVariant
+import qgis.utils
+
+# Coordinates in GDA94 / MGA zone 54
+x, y = 747956.66, 5840374.45
+
+# Create a new memory layer, add it to the map
+vl = QgsVectorLayer("Point?crs=epsg:28354", "Temporary_Point_Layer", "memory")
+pr = vl.dataProvider()
+
+# Add fields to the memory layer
+pr.addAttributes([QgsField("id", QVariant.Int),
+                  QgsField("name", QVariant.String)])
+vl.updateFields()
+
+# Create a new feature
+feature = QgsFeature()
+feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+feature.setAttributes([1, "Target Point"])
+
+# Add the feature to the layer
+pr.addFeature(feature)
+vl.updateExtents()
+
+# Add the layer to the Layers panel
+QgsProject.instance().addMapLayer(vl)
+
+# Zoom to the point (optional)
+canvas = qgis.utils.iface.mapCanvas()
+canvas.setCenter(QgsPointXY(x, y))
+canvas.zoomScale(5000) # Adjust the zoom scale as needed
